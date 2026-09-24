@@ -1,5 +1,6 @@
 import 'package:always_on_display_app/models/alarm.dart';
 import 'package:always_on_display_app/models/clock_settings.dart';
+import 'package:always_on_display_app/state/stopwatch_controller.dart';
 import 'package:always_on_display_app/utils/ru_date.dart';
 import 'package:always_on_display_app/widgets/clock_display.dart';
 import 'package:always_on_display_app/widgets/seconds_orbit.dart';
@@ -54,6 +55,28 @@ void main() {
       expect(formatClockDate(date), '23 Сентября  СР');
       expect(formatClockDate(date, DateStyle.dayMonthShort), '23 Сентября Ср');
       expect(formatClockDate(date, DateStyle.weekday), 'Среда, 23');
+    });
+
+    test('секундомер показывает сотые', () {
+      expect(
+        formatStopwatch(const Duration(minutes: 1, seconds: 2, milliseconds: 340)),
+        '01:02.34',
+      );
+      expect(formatStopwatch(const Duration(hours: 1, seconds: 5)), '1:00:05.00');
+    });
+
+    test('секундомер на паузе не идёт дальше', () async {
+      final stopwatch = StopwatchController();
+      addTearDown(stopwatch.dispose);
+      stopwatch.start();
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      stopwatch.pause();
+      final paused = stopwatch.elapsed;
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(stopwatch.elapsed, paused);
+      stopwatch.reset();
+      expect(stopwatch.elapsed, Duration.zero);
+      expect(stopwatch.status, StopwatchStatus.idle);
     });
   });
 

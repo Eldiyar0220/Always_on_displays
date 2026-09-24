@@ -132,6 +132,54 @@ class ClockDisplay extends StatelessWidget {
     }
     return widest;
   }
+
+  /// Прямоугольник крупных цифр внутри рамки [box], уже после FittedBox.
+  static Rect paintedBounds(DateTime time, ClockSettings settings, Size box) {
+    final style = withClockFont(
+      settings.clockFont,
+      TextStyle(
+        fontSize: _referenceFontSize,
+        fontWeight: settings.fontWeight,
+        height: 1,
+      ),
+    );
+    final digitWidth = measureDigitWidth(style);
+    final digitHeight = _measureHeight(style);
+    final hours = formatHours(
+      time,
+      use24Hour: settings.use24HourFormat,
+      leadingZero: settings.showLeadingZero,
+    ).length;
+    var rowWidth = digitWidth * (hours + 2) + digitWidth * 0.42;
+    if (settings.secondsMode == SecondsMode.digits || !settings.use24HourFormat) {
+      rowWidth += digitWidth * 0.7;
+    }
+    if (rowWidth <= 0 || digitHeight <= 0 || box.isEmpty) {
+      return Rect.fromLTWH(0, 0, box.width, box.height);
+    }
+    final scaleW = box.width / rowWidth;
+    final scaleH = box.height / digitHeight;
+    final scale = scaleW < scaleH ? scaleW : scaleH;
+    final paintedW = rowWidth * scale;
+    final paintedH = digitHeight * scale;
+    return Rect.fromLTWH(
+      (box.width - paintedW) / 2,
+      (box.height - paintedH) / 2,
+      paintedW,
+      paintedH,
+    );
+  }
+
+  static double _measureHeight(TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(text: '0', style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height;
+  }
 }
 
 class _Colon extends StatelessWidget {

@@ -4,9 +4,25 @@ import 'package:flutter/material.dart';
 enum DigitAnimation {
   none('Нет'),
   blur('Blur'),
+  blurMax('Blur Max'),
   segment('Segment'),
   sputnik('Sputnik'),
-  stretch('Stretch');
+  sputnikPro('Sputnik Pro+'),
+  sputnikMax('Sputnik Max'),
+  stretch('Stretch'),
+  fade('Fade'),
+  roll('Roll'),
+  rollMax('Roll Max'),
+  flip('Flip'),
+  flipMax('Flip Max'),
+  pop('Pop'),
+  glow('Glow'),
+  ripple('Ripple'),
+  spin('Spin'),
+  drop('Drop'),
+  glitch('Glitch'),
+  wipe('Wipe'),
+  swing('Swing');
 
   const DigitAnimation(this.label);
 
@@ -21,6 +37,19 @@ enum SecondsMode {
   orbit('По краю');
 
   const SecondsMode(this.label);
+
+  final String label;
+}
+
+/// Как показывать секундомер и обратный отсчёт рядом с надписью.
+enum TimerVisual {
+  digits('Цифры'),
+  bar('Полоса'),
+  orbit('По краю'),
+  ring('Кольцо'),
+  wave('Волна');
+
+  const TimerVisual(this.label);
 
   final String label;
 }
@@ -45,7 +74,10 @@ enum ClockFont {
 enum OrbitStyle {
   dot('Точка'),
   opacity('Opacity'),
-  jump('Прыжок');
+  jump('Прыжок'),
+  comet('Комета'),
+  pulse('Пульс'),
+  aurora('Сияние');
 
   const OrbitStyle(this.label);
 
@@ -75,10 +107,11 @@ enum DateStyle {
   final String sample;
 }
 
-/// Куда поставить свою надпись: сверху или снизу, всегда по центру.
+/// Куда поставить свою надпись: к краю экрана или справа от крупных цифр.
 enum NotePlacement {
   top('Сверху'),
-  bottom('Снизу');
+  bottom('Снизу'),
+  clock('У часов');
 
   const NotePlacement(this.label);
 
@@ -115,6 +148,7 @@ class ClockSettings {
     this.noteFont = ClockFont.system,
     this.noteWeight = 5,
     this.noteSize = 20,
+    this.timerVisual = TimerVisual.digits,
   });
 
   /// 24-часовой формат вместо AM/PM.
@@ -170,7 +204,7 @@ class ClockSettings {
   /// Короткая своя надпись на циферблате. Пустая строка ничего не рисует.
   final String customNote;
 
-  /// Сверху или снизу экрана, по горизонтали всегда по центру.
+  /// Сверху, снизу или вплотную под крупными цифрами.
   final NotePlacement notePlacement;
 
   /// Шрифт надписи, отдельно от крупных цифр.
@@ -181,6 +215,9 @@ class ClockSettings {
 
   /// Кегль надписи, 14..64.
   final double noteSize;
+
+  /// Цифры, полоса или ход по краю экрана для секундомера и отсчёта.
+  final TimerVisual timerVisual;
 
   FontWeight get fontWeight => weightFor(digitWeight);
 
@@ -200,7 +237,8 @@ class ClockSettings {
 
   Color get background => nightTheme ? Colors.black : const Color(0xFFF2F2F7);
 
-  Color get foreground => nightTheme ? digitColor : _darkenForLightTheme(digitColor);
+  Color get foreground =>
+      nightTheme ? digitColor : _darkenForLightTheme(digitColor);
 
   static Color _darkenForLightTheme(Color color) {
     if (color.computeLuminance() < 0.6) return color;
@@ -235,6 +273,7 @@ class ClockSettings {
     ClockFont? noteFont,
     int? noteWeight,
     double? noteSize,
+    TimerVisual? timerVisual,
   }) {
     return ClockSettings(
       use24HourFormat: use24HourFormat ?? this.use24HourFormat,
@@ -264,6 +303,7 @@ class ClockSettings {
       noteFont: noteFont ?? this.noteFont,
       noteWeight: noteWeight ?? this.noteWeight,
       noteSize: noteSize ?? this.noteSize,
+      timerVisual: timerVisual ?? this.timerVisual,
     );
   }
 
@@ -296,7 +336,8 @@ class ClockSettings {
         other.notePlacement == notePlacement &&
         other.noteFont == noteFont &&
         other.noteWeight == noteWeight &&
-        other.noteSize == noteSize;
+        other.noteSize == noteSize &&
+        other.timerVisual == timerVisual;
   }
 
   @override
@@ -328,6 +369,7 @@ class ClockSettings {
     noteFont,
     noteWeight,
     noteSize,
+    timerVisual,
   ]);
 
   Map<String, Object?> toJson() => {
@@ -358,6 +400,7 @@ class ClockSettings {
     'noteFont': noteFont.name,
     'noteWeight': noteWeight,
     'noteSize': noteSize,
+    'timerVisual': timerVisual.name,
   };
 
   factory ClockSettings.fromJson(Map<String, Object?> json) {
@@ -407,7 +450,10 @@ class ClockSettings {
       ),
       infoIntensity: pick('infoIntensity', fallback.infoIntensity),
       infoFollowsDigits: pick('infoFollowsDigits', fallback.infoFollowsDigits),
-      batteryTintByLevel: pick('batteryTintByLevel', fallback.batteryTintByLevel),
+      batteryTintByLevel: pick(
+        'batteryTintByLevel',
+        fallback.batteryTintByLevel,
+      ),
       customNote: pick('customNote', fallback.customNote),
       notePlacement: NotePlacement.values.firstWhere(
         (value) => value.name == json['notePlacement'],
@@ -419,6 +465,10 @@ class ClockSettings {
       ),
       noteWeight: pick('noteWeight', fallback.noteWeight),
       noteSize: pick('noteSize', fallback.noteSize),
+      timerVisual: TimerVisual.values.firstWhere(
+        (value) => value.name == json['timerVisual'],
+        orElse: () => fallback.timerVisual,
+      ),
     );
   }
 }

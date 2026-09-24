@@ -8,10 +8,18 @@ import '../models/clock_settings.dart';
 
 /// Точка секунд, которая за минуту обходит экран по периметру.
 class SecondsOrbit extends StatefulWidget {
-  const SecondsOrbit({super.key, required this.color, required this.style});
+  const SecondsOrbit({
+    super.key,
+    required this.color,
+    required this.style,
+    this.progressOf,
+  });
 
   final Color color;
   final OrbitStyle style;
+
+  /// Если задано, точка идёт по этому прогрессу 0..1, а не по секундам часов.
+  final double Function()? progressOf;
 
   @override
   State<SecondsOrbit> createState() => _SecondsOrbitState();
@@ -37,7 +45,8 @@ class _SecondsOrbitState extends State<SecondsOrbit> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final progress = (now.second + now.millisecond / 1000) / 60;
+    final progress =
+        widget.progressOf?.call() ?? (now.second + now.millisecond / 1000) / 60;
     return IgnorePointer(
       child: CustomPaint(
         painter: _OrbitPainter(
@@ -72,6 +81,12 @@ class _OrbitPainter extends CustomPainter {
         _paintOpacity(canvas, geometry);
       case OrbitStyle.jump:
         _paintJump(canvas, geometry);
+      case OrbitStyle.comet:
+        _paintComet(canvas, geometry);
+      case OrbitStyle.pulse:
+        _paintPulse(canvas, geometry);
+      case OrbitStyle.aurora:
+        _paintAurora(canvas, geometry);
     }
   }
 
@@ -130,6 +145,64 @@ class _OrbitPainter extends CustomPainter {
       Paint()..color = color.withValues(alpha: 0.45),
     );
     canvas.drawCircle(lifted, 3.2 + hop * 0.12, Paint()..color = color);
+  }
+
+  /// Длинный мягкий хвост, который тянется за яркой головой.
+  void _paintComet(Canvas canvas, _OrbitGeometry geometry) {
+    canvas.drawPath(geometry.path, _stroke(color.withValues(alpha: 0.08), 1.5));
+    const tail = 0.18;
+    const steps = 24;
+    for (var i = steps; i >= 1; i--) {
+      final t = i / steps;
+      final fade = pow(1 - t, 1.7).toDouble();
+      canvas.drawCircle(
+        geometry.point(_wrap(progress - tail * t)),
+        1.2 + 4.2 * fade,
+        Paint()..color = color.withValues(alpha: 0.04 + 0.7 * fade),
+      );
+    }
+    final head = geometry.point(progress);
+    canvas.drawCircle(head, 9, Paint()..color = color.withValues(alpha: 0.2));
+    canvas.drawCircle(head, 3.5, Paint()..color = color);
+  }
+
+  /// Точка дышит и оставляет за собой затухающее кольцо.
+  void _paintPulse(Canvas canvas, _OrbitGeometry geometry) {
+    final phase = DateTime.now().millisecond / 1000 * pi * 2;
+    final breath = 0.5 + 0.5 * sin(phase);
+    final head = geometry.point(progress);
+    canvas.drawCircle(
+      head,
+      5 + breath * 14,
+      Paint()..color = color.withValues(alpha: 0.16 * (1 - breath)),
+    );
+    const tail = 0.05;
+    for (var i = 6; i >= 1; i--) {
+      canvas.drawCircle(
+        geometry.point(_wrap(progress - tail * i / 6)),
+        2,
+        Paint()..color = color.withValues(alpha: 0.12 * (7 - i) / 6),
+      );
+    }
+    canvas.drawCircle(head, 2.6 + breath * 2.2, Paint()..color = color);
+  }
+
+  /// Широкая светящаяся лента ползёт по периметру.
+  void _paintAurora(Canvas canvas, _OrbitGeometry geometry) {
+    canvas.drawPath(geometry.path, _stroke(color.withValues(alpha: 0.07), 2));
+    const band = 0.16;
+    const parts = 16;
+    for (var i = 0; i < parts; i++) {
+      final t = i / parts;
+      final fade = sin(t * pi);
+      geometry.drawSpan(
+        canvas,
+        _wrap(progress - band + band * i / parts),
+        _wrap(progress - band + band * (i + 1) / parts),
+        _stroke(color.withValues(alpha: 0.08 + 0.75 * fade), 2 + 7 * fade),
+      );
+    }
+    canvas.drawCircle(geometry.point(progress), 4, Paint()..color = color);
   }
 
   Paint _stroke(Color strokeColor, double width) {

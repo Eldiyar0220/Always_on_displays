@@ -10,6 +10,7 @@ import '../services/device_services.dart';
 import '../state/alarm_controller.dart';
 import '../state/countdown_controller.dart';
 import '../state/settings_controller.dart';
+import '../state/stopwatch_controller.dart';
 import '../utils/ru_date.dart';
 import '../widgets/alarm_panel.dart';
 import '../widgets/charge_badge.dart';
@@ -32,6 +33,7 @@ class ClockScreen extends StatefulWidget {
     required this.torch,
     required this.brightnessService,
     required this.countdown,
+    required this.stopwatch,
     required this.alarms,
   });
 
@@ -39,6 +41,7 @@ class ClockScreen extends StatefulWidget {
   final TorchService torch;
   final BrightnessService brightnessService;
   final CountdownController countdown;
+  final StopwatchController stopwatch;
   final AlarmController alarms;
 
   @override
@@ -70,7 +73,10 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _setWakelock(true);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) => _onTick());
+    _ticker = Timer.periodic(
+      const Duration(milliseconds: 200),
+      (_) => _onTick(),
+    );
   }
 
   @override
@@ -151,7 +157,8 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
   void _cycleSecondsMode() {
     final controller = SettingsScope.of(context);
     final modes = SecondsMode.values;
-    final next = modes[(modes.indexOf(controller.value.secondsMode) + 1) % modes.length];
+    final next =
+        modes[(modes.indexOf(controller.value.secondsMode) + 1) % modes.length];
     controller.update((current) => current.copyWith(secondsMode: next));
   }
 
@@ -191,10 +198,7 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
     if (_screenLight) {
       return GestureDetector(
         onTap: () => setState(() => _screenLight = false),
-        child: const ColoredBox(
-          color: Colors.white,
-          child: SizedBox.expand(),
-        ),
+        child: const ColoredBox(color: Colors.white, child: SizedBox.expand()),
       );
     }
 
@@ -217,12 +221,32 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
                   style: settings.orbitStyle,
                 ),
               ),
-            if (settings.customNote.trim().isNotEmpty)
+            if (settings.timerVisual == TimerVisual.orbit && widget.stopwatch.isActive)
+              Positioned.fill(
+                child: SecondsOrbit(
+                  color: settings.foreground,
+                  style: settings.orbitStyle,
+                  progressOf: _stopwatchLap,
+                ),
+              ),
+            if (settings.timerVisual == TimerVisual.orbit &&
+                (widget.countdown.isActive ||
+                    widget.countdown.status == CountdownStatus.finished))
+              Positioned.fill(
+                child: SecondsOrbit(
+                  color: settings.accentColor,
+                  style: settings.orbitStyle,
+                  progressOf: _countdownLap,
+                ),
+              ),
+            if (settings.notePlacement != NotePlacement.clock)
               Positioned.fill(
                 child: IgnorePointer(
-                  child: _CustomNote(
+                  child: _NoteStack(
                     settings: settings,
                     controlsVisible: _controlsVisible,
+                    countdown: widget.countdown,
+                    stopwatch: widget.stopwatch,
                   ),
                 ),
               ),
@@ -262,6 +286,19 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Секундомер обходит край за текущую минуту.
+  double _stopwatchLap() {
+    return (widget.stopwatch.elapsed.inMilliseconds % 60000) / 60000;
+  }
+
+  /// Отсчёт проходит край один раз за всё заданное время.
+  double _countdownLap() {
+    final total = widget.countdown.configured.inMilliseconds;
+    if (total <= 0) return 0;
+    final left = widget.countdown.remaining.inMilliseconds.clamp(0, total);
+    return 1 - left / total;
+  }
+
   Widget _buildClock(ClockSettings settings, Size size) {
     final battery = widget.battery.value;
     final showBar = settings.secondsMode == SecondsMode.bar;
@@ -288,7 +325,8 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
                   time: _now,
                   settings: settings,
                   battery: battery,
-                  colonVisible: settings.secondsMode != SecondsMode.hidden ||
+                  colonVisible:
+                      settings.secondsMode != SecondsMode.hidden ||
                       _now.millisecond < 500,
                 ),
                 if (settings.infoPlacement == InfoPlacement.corners)
@@ -296,9 +334,14 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: _CornerInfo(settings: settings, battery: battery, date: _now),
+                    child: _CornerInfo(
+                      settings: settings,
+                      battery: battery,
+                      date: _now,
+                    ),
                   ),
-                if (settings.infoPlacement == InfoPlacement.colon && settings.showDate)
+                if (settings.infoPlacement == InfoPlacement.colon &&
+                    settings.showDate)
                   Positioned(
                     bottom: -8,
                     left: 0,
@@ -320,12 +363,47 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
                     right: boxWidth * 0.18,
                     child: SecondsBar(time: _now, color: settings.accentColor),
                   ),
+                if (settings.notePlacement == NotePlacement.clock)
+                  Positioned(
+                    left: _digitBounds(settings, boxWidth, boxHeight).right + 14,
+                    width: _noteRoom(size, boxWidth, boxHeight, settings),
+                    top: _digitBounds(settings, boxWidth, boxHeight).center.dy,
+                    child: IgnorePointer(
+                      child: FractionalTranslation(
+                        translation: const Offset(0, -0.5),
+                        child: _NoteStack(
+                          settings: settings,
+                          controlsVisible: _controlsVisible,
+                          countdown: widget.countdown,
+                          stopwatch: widget.stopwatch,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Rect _digitBounds(ClockSettings settings, double boxWidth, double boxHeight) {
+    return ClockDisplay.paintedBounds(_now, settings, Size(boxWidth, boxHeight));
+  }
+
+  /// Сколько места справа от цифр остаётся до края экрана.
+  double _noteRoom(
+    Size screen,
+    double boxWidth,
+    double boxHeight,
+    ClockSettings settings,
+  ) {
+    final bounds = _digitBounds(settings, boxWidth, boxHeight);
+    final screenRight = boxWidth + (screen.width - boxWidth) / 2;
+    final room = screenRight - bounds.right - 16;
+    if (room < 48) return 48;
+    return room;
   }
 
   /// Программное затемнение поверх системной яркости — ночью экран
@@ -380,7 +458,7 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
               Icon(Icons.timer_off_outlined, color: Colors.white, size: 20),
               SizedBox(width: 10),
               Text(
-                'Таймер завершён — стоп',
+                'Отсчёт завершён — стоп',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -405,8 +483,11 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
         child: ControlDock(
           selected: _panel,
           onSelect: _selectPanel,
-          timerBadge:
-              countdown.isActive ? formatTimerDigits(countdown.remaining) : null,
+          timerBadge: countdown.isActive
+              ? formatTimerDigits(countdown.remaining)
+              : widget.stopwatch.isActive
+              ? formatTimerDigits(widget.stopwatch.elapsed)
+              : null,
           alarmBadge: untilAlarm != null && untilAlarm.inHours < 12
               ? formatCountdownWords(untilAlarm)
               : null,
@@ -435,9 +516,9 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
               },
               onScreenLight: () => setState(() => _screenLight = true),
               onBrightness: (value) {
-                SettingsScope.of(context).update(
-                  (current) => current.copyWith(localBrightness: value),
-                );
+                SettingsScope.of(
+                  context,
+                ).update((current) => current.copyWith(localBrightness: value));
                 widget.brightnessService.apply(value);
                 _restartHideTimer();
               },
@@ -451,11 +532,15 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
       setState(() => _panel = null);
       _restartHideTimer();
     }
+
     return switch (panel) {
       DockPanel.timer => ListenableBuilder(
-        listenable: widget.countdown,
-        builder: (context, child) =>
-            TimerPanel(controller: widget.countdown, onClose: close),
+        listenable: Listenable.merge([widget.countdown, widget.stopwatch]),
+        builder: (context, child) => TimerPanel(
+          countdown: widget.countdown,
+          stopwatch: widget.stopwatch,
+          onClose: close,
+        ),
       ),
       DockPanel.settings => SettingsPanel(onClose: close),
       DockPanel.alarm => ListenableBuilder(
@@ -468,16 +553,53 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
   }
 }
 
-/// Своя надпись по центру: либо у верхнего края, либо у нижнего.
-class _CustomNote extends StatelessWidget {
-  const _CustomNote({required this.settings, required this.controlsVisible});
+/// Надпись и таймеры в одну строку: секундомер и отсчёт справа от надписи.
+class _NoteStack extends StatelessWidget {
+  const _NoteStack({
+    required this.settings,
+    required this.controlsVisible,
+    required this.countdown,
+    required this.stopwatch,
+  });
 
   final ClockSettings settings;
   final bool controlsVisible;
+  final CountdownController countdown;
+  final StopwatchController stopwatch;
 
   @override
   Widget build(BuildContext context) {
     final atTop = settings.notePlacement == NotePlacement.top;
+    final onClock = settings.notePlacement == NotePlacement.clock;
+    final note = settings.customNote.trim();
+    final showTimers =
+        countdown.isActive ||
+        countdown.status == CountdownStatus.finished ||
+        stopwatch.isActive;
+    final noteLabel = note.isEmpty ? null : _noteLabel(settings);
+    final timers = RunningTimers(
+      countdown: countdown,
+      stopwatch: stopwatch,
+      color: settings.foreground,
+    );
+
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (noteLabel != null) _noteChip(settings, noteLabel),
+        if (noteLabel != null && showTimers) const SizedBox(width: 12),
+        timers,
+      ],
+    );
+
+    if (onClock) {
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: row,
+      );
+    }
 
     return SafeArea(
       child: Align(
@@ -487,22 +609,25 @@ class _CustomNote extends StatelessWidget {
             left: 28,
             right: 28,
             top: atTop ? 48 : 12,
-            // Снизу панель управления перекрывает край, поэтому надпись поднимается.
             bottom: atTop ? 12 : (controlsVisible ? 168 : 28),
           ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: settings.nightTheme
-                  ? Colors.black.withValues(alpha: 0.45)
-                  : Colors.white.withValues(alpha: 0.62),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: _noteLabel(settings),
-            ),
-          ),
+          child: row,
         ),
+      ),
+    );
+  }
+
+  Widget _noteChip(ClockSettings settings, Widget label) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: settings.nightTheme
+            ? Colors.black.withValues(alpha: 0.45)
+            : Colors.white.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: label,
       ),
     );
   }

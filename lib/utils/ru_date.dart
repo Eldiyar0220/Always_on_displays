@@ -73,6 +73,17 @@ String formatTimerDigits(Duration duration) {
   return '${twoDigits(minutes)}:${twoDigits(seconds)}';
 }
 
+/// «01:02.34» — минуты, секунды и сотые для секундомера.
+String formatStopwatch(Duration duration) {
+  final hours = duration.inHours;
+  final minutes = twoDigits(duration.inMinutes.remainder(60));
+  final seconds = twoDigits(duration.inSeconds.remainder(60));
+  final centis = twoDigits(duration.inMilliseconds.remainder(1000) ~/ 10);
+  final clock = '$minutes:$seconds.$centis';
+  if (hours > 0) return '$hours:$clock';
+  return clock;
+}
+
 /// Короткая дата для панели информации.
 String formatFullDate(DateTime date) =>
     DateFormat('dd.MM.yyyy').format(date);

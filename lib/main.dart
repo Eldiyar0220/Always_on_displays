@@ -7,6 +7,7 @@ import 'services/device_services.dart';
 import 'state/alarm_controller.dart';
 import 'state/countdown_controller.dart';
 import 'state/settings_controller.dart';
+import 'state/stopwatch_controller.dart';
 import 'widgets/clock_fonts.dart';
 
 Future<void> main() async {
@@ -23,6 +24,7 @@ Future<void> main() async {
       settings: settings,
       alarms: alarms,
       countdown: CountdownController(sound),
+      stopwatch: StopwatchController(),
     ),
   );
   preloadClockFonts();
@@ -34,11 +36,13 @@ class ClockApp extends StatefulWidget {
     required this.settings,
     required this.alarms,
     required this.countdown,
+    required this.stopwatch,
   });
 
   final SettingsController settings;
   final AlarmController alarms;
   final CountdownController countdown;
+  final StopwatchController stopwatch;
 
   @override
   State<ClockApp> createState() => _ClockAppState();
@@ -60,6 +64,7 @@ class _ClockAppState extends State<ClockApp> {
     _battery.dispose();
     _torch.dispose();
     widget.countdown.dispose();
+    widget.stopwatch.dispose();
     widget.alarms.dispose();
     super.dispose();
   }
@@ -89,6 +94,7 @@ class _ClockAppState extends State<ClockApp> {
           torch: _torch,
           brightnessService: _brightness,
           countdown: widget.countdown,
+          stopwatch: widget.stopwatch,
           alarms: widget.alarms,
         ),
       ),
