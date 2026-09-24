@@ -5,6 +5,7 @@ import '../services/device_services.dart';
 import '../utils/ru_date.dart';
 import 'animated_digit.dart';
 import 'charge_badge.dart';
+import 'clock_fonts.dart';
 
 /// Крупное время во весь экран: часы, двоеточие, минуты и, при желании, секунды.
 class ClockDisplay extends StatelessWidget {
@@ -31,12 +32,14 @@ class ClockDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = settings.foreground;
-    final style = TextStyle(
-      fontSize: _referenceFontSize,
-      fontWeight: settings.fontWeight,
-      color: color,
-      height: 1,
-      letterSpacing: -_referenceFontSize * 0.02,
+    final style = withClockFont(
+      settings.clockFont,
+      TextStyle(
+        fontSize: _referenceFontSize,
+        fontWeight: settings.fontWeight,
+        color: color,
+        height: 1,
+      ),
     );
 
     final digitWidth = measureDigitWidth(style);
@@ -47,6 +50,7 @@ class ClockDisplay extends StatelessWidget {
     );
     final minutes = twoDigits(time.minute);
 
+    final glass = settings.clockFont == ClockFont.glass;
     final cells = <Widget>[
       for (var i = 0; i < hours.length; i++)
         AnimatedDigit(
@@ -55,6 +59,7 @@ class ClockDisplay extends StatelessWidget {
           style: style,
           animation: settings.animation,
           width: digitWidth,
+          glass: glass,
         ),
       _Colon(
         key: const ValueKey('colon'),
@@ -79,6 +84,7 @@ class ClockDisplay extends StatelessWidget {
           style: style,
           animation: settings.animation,
           width: digitWidth,
+          glass: glass,
         ),
     ];
 
@@ -96,6 +102,7 @@ class ClockDisplay extends StatelessWidget {
               style: style,
               accent: settings.accentColor,
               animation: settings.animation,
+              glass: glass,
             )
           else if (!settings.use24HourFormat)
             _SideColumn(
@@ -104,6 +111,7 @@ class ClockDisplay extends StatelessWidget {
               style: style,
               accent: settings.accentColor,
               animation: settings.animation,
+              glass: glass,
             ),
         ],
       ),
@@ -197,6 +205,7 @@ class _SideColumn extends StatelessWidget {
     required this.style,
     required this.accent,
     required this.animation,
+    required this.glass,
   });
 
   final String? seconds;
@@ -204,6 +213,7 @@ class _SideColumn extends StatelessWidget {
   final TextStyle style;
   final Color accent;
   final DigitAnimation animation;
+  final bool glass;
 
   @override
   Widget build(BuildContext context) {
@@ -218,12 +228,18 @@ class _SideColumn extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (meridiem != null)
-            Text(meridiem!, style: smallStyle.copyWith(letterSpacing: 0)),
+            glass
+                ? GlassText(
+                    text: meridiem!,
+                    style: smallStyle.copyWith(letterSpacing: 0),
+                  )
+                : Text(meridiem!, style: smallStyle.copyWith(letterSpacing: 0)),
           if (seconds != null)
             _FixedDigits(
               text: seconds!,
               style: smallStyle,
               animation: animation,
+              glass: glass,
             ),
         ],
       ),
@@ -238,11 +254,13 @@ class _FixedDigits extends StatelessWidget {
     required this.text,
     required this.style,
     required this.animation,
+    this.glass = false,
   });
 
   final String text;
   final TextStyle style;
   final DigitAnimation animation;
+  final bool glass;
 
   @override
   Widget build(BuildContext context) {
@@ -257,6 +275,7 @@ class _FixedDigits extends StatelessWidget {
             style: style,
             animation: animation,
             width: cellWidth,
+            glass: glass,
           ),
       ],
     );

@@ -14,6 +14,7 @@ import '../utils/ru_date.dart';
 import '../widgets/alarm_panel.dart';
 import '../widgets/charge_badge.dart';
 import '../widgets/clock_display.dart';
+import '../widgets/clock_fonts.dart';
 import '../widgets/control_dock.dart';
 import '../widgets/info_panel.dart';
 import '../widgets/quick_bar.dart';
@@ -119,6 +120,8 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
 
   void _restartHideTimer() {
     _hideTimer?.cancel();
+    // Открытый лист (настройки, таймер, будильник) не прячется сам.
+    if (_panel != null) return;
     _hideTimer = Timer(_autoHide, () {
       if (!mounted) return;
       setState(() {
@@ -208,18 +211,39 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
           children: [
             _buildClock(settings, size),
             if (settings.secondsMode == SecondsMode.orbit)
-              Positioned.fill(child: SecondsOrbit(color: settings.accentColor)),
+              Positioned.fill(
+                child: SecondsOrbit(
+                  color: settings.accentColor,
+                  style: settings.orbitStyle,
+                ),
+              ),
+            if (settings.customNote.trim().isNotEmpty)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: _CustomNote(
+                    settings: settings,
+                    controlsVisible: _controlsVisible,
+                  ),
+                ),
+              ),
             _buildDimmer(settings),
             SafeArea(
               minimum: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 children: [
                   _buildStatusBar(settings),
-                  const Spacer(),
-                  _buildTimerFinishedBanner(),
-                  _buildDock(),
-                  const SizedBox(height: 12),
-                  _buildBottomArea(settings),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _buildTimerFinishedBanner(),
+                        _buildDock(),
+                        const SizedBox(height: 12),
+                        // Лист сжимается, когда клавиатура забирает низ экрана.
+                        Flexible(child: _buildBottomArea(settings)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -239,68 +263,65 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildClock(ClockSettings settings, Size size) {
-    final offset = _burnInOffset(settings, size);
-    final showBar = settings.secondsMode == SecondsMode.bar;
     final battery = widget.battery.value;
-    // Габариты рамки задаются явно: FittedBox внутри вписывает цифры
-    // и в портрет, и в ландшафт без переполнения.
-    final boxWidth = size.width * 0.96 * settings.digitScale;
-    final boxHeight = size.height * (showBar ? 0.52 : 0.64) * settings.digitScale;
-    // Открытая панель занимает низ экрана — часы уезжают наверх и уменьшаются.
-    final compact = _panel != null;
+    final showBar = settings.secondsMode == SecondsMode.bar;
+    // Рамка чуть меньше экрана: FittedBox вписывает цифры и в портрет, и в альбом.
+    // Сама рамка стоит в центре экрана, дата и полоса секунд её не сдвигают.
+    final boxWidth = size.width * 0.92 * settings.digitScale;
+    final boxHeight = size.height * 0.62 * settings.digitScale;
+    final drift = settings.secondsMode == SecondsMode.orbit
+        ? Offset.zero
+        : _burnInOffset(settings, size);
 
-    return AnimatedAlign(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      alignment: compact ? const Alignment(0, -0.7) : Alignment.center,
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-        scale: compact ? 0.42 : 1,
-        child: AnimatedSlide(
-          duration: const Duration(seconds: 20),
-          curve: Curves.linear,
-          offset: Offset(offset.dx / size.width, offset.dy / size.height),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: boxWidth,
-                height: boxHeight,
-                child: Stack(
-                  children: [
-                    ClockDisplay(
-                      time: _now,
-                      settings: settings,
-                      battery: battery,
-                      colonVisible: settings.secondsMode != SecondsMode.hidden ||
-                          _now.millisecond < 500,
-                    ),
-                    if (settings.infoPlacement == InfoPlacement.corners)
-                      _CornerInfo(settings: settings, battery: battery, date: _now),
-                  ],
+    return Positioned.fill(
+      child: Center(
+        child: Transform.translate(
+          offset: drift,
+          child: SizedBox(
+            width: boxWidth,
+            height: boxHeight,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                ClockDisplay(
+                  time: _now,
+                  settings: settings,
+                  battery: battery,
+                  colonVisible: settings.secondsMode != SecondsMode.hidden ||
+                      _now.millisecond < 500,
                 ),
-              ),
-              if (settings.infoPlacement == InfoPlacement.colon && settings.showDate)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(
-                    formatClockDate(_now, settings.dateStyle),
-                    style: TextStyle(
-                      color: secondaryInfoColor(settings),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                if (settings.infoPlacement == InfoPlacement.corners)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _CornerInfo(settings: settings, battery: battery, date: _now),
+                  ),
+                if (settings.infoPlacement == InfoPlacement.colon && settings.showDate)
+                  Positioned(
+                    bottom: -8,
+                    left: 0,
+                    right: 0,
+                    child: Text(
+                      formatClockDate(_now, settings.dateStyle),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: secondaryInfoColor(settings),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-              if (showBar) ...[
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: boxWidth * 0.65,
-                  child: SecondsBar(time: _now, color: settings.accentColor),
-                ),
+                if (showBar)
+                  Positioned(
+                    bottom: -14,
+                    left: boxWidth * 0.18,
+                    right: boxWidth * 0.18,
+                    child: SecondsBar(time: _now, color: settings.accentColor),
+                  ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -426,7 +447,10 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildPanel(DockPanel panel) {
-    void close() => setState(() => _panel = null);
+    void close() {
+      setState(() => _panel = null);
+      _restartHideTimer();
+    }
     return switch (panel) {
       DockPanel.timer => ListenableBuilder(
         listenable: widget.countdown,
@@ -441,6 +465,77 @@ class _ClockScreenState extends State<ClockScreen> with WidgetsBindingObserver {
       ),
       DockPanel.info => InfoPanel(now: _now, onClose: close),
     };
+  }
+}
+
+/// Своя надпись по центру: либо у верхнего края, либо у нижнего.
+class _CustomNote extends StatelessWidget {
+  const _CustomNote({required this.settings, required this.controlsVisible});
+
+  final ClockSettings settings;
+  final bool controlsVisible;
+
+  @override
+  Widget build(BuildContext context) {
+    final atTop = settings.notePlacement == NotePlacement.top;
+
+    return SafeArea(
+      child: Align(
+        alignment: atTop ? Alignment.topCenter : Alignment.bottomCenter,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 28,
+            right: 28,
+            top: atTop ? 48 : 12,
+            // Снизу панель управления перекрывает край, поэтому надпись поднимается.
+            bottom: atTop ? 12 : (controlsVisible ? 168 : 28),
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: settings.nightTheme
+                  ? Colors.black.withValues(alpha: 0.45)
+                  : Colors.white.withValues(alpha: 0.62),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: settings.clockFont == ClockFont.glass
+                  ? GlassText(
+                      text: settings.customNote.trim(),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: true,
+                      style: withClockFont(
+                        settings.clockFont,
+                        TextStyle(
+                          color: settings.foreground,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                        ),
+                      ).copyWith(letterSpacing: 0.6),
+                    )
+                  : Text(
+                      settings.customNote.trim(),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: withClockFont(
+                        settings.clockFont,
+                        TextStyle(
+                          color: settings.foreground,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                        ),
+                      ).copyWith(letterSpacing: 0.6),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -7,6 +7,7 @@ import 'services/device_services.dart';
 import 'state/alarm_controller.dart';
 import 'state/countdown_controller.dart';
 import 'state/settings_controller.dart';
+import 'widgets/clock_fonts.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,7 @@ Future<void> main() async {
       countdown: CountdownController(sound),
     ),
   );
+  preloadClockFonts();
 }
 
 class ClockApp extends StatefulWidget {

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../models/clock_settings.dart';
+import 'clock_fonts.dart';
 
 /// Одна цифра времени, которая красиво сменяется при изменении значения.
 class AnimatedDigit extends StatelessWidget {
@@ -12,25 +13,34 @@ class AnimatedDigit extends StatelessWidget {
     required this.style,
     required this.animation,
     this.width,
+    this.glass = false,
   });
 
   final String character;
   final TextStyle style;
   final DigitAnimation animation;
+  final bool glass;
 
   /// Фиксированная ширина ячейки: без неё «1» сдвигала бы соседние цифры.
   final double? width;
 
   @override
   Widget build(BuildContext context) {
-    final text = Text(
-      character,
-      key: ValueKey(character),
-      style: style,
-      textAlign: TextAlign.center,
-      maxLines: 1,
-      softWrap: false,
-    );
+    final text = glass
+        ? GlassText(
+            key: ValueKey(character),
+            text: character,
+            style: style,
+            textAlign: TextAlign.center,
+          )
+        : Text(
+            character,
+            key: ValueKey(character),
+            style: style,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            softWrap: false,
+          );
 
     final child = animation == DigitAnimation.none
         ? text

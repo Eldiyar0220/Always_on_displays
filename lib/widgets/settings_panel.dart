@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/clock_settings.dart';
 import '../state/settings_controller.dart';
+import 'clock_fonts.dart';
 import 'panel_shell.dart';
 
 /// Панель внешнего вида: цвет, толщина и размер цифр, анимация, формат времени.
@@ -38,6 +39,43 @@ class SettingsPanel extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(bottom: 6),
             child: Text(
+              'Шрифт',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          _FontPicker(
+            selected: settings.clockFont,
+            onChanged: (value) => controller.update(
+              (current) => current.copyWith(clockFont: value),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Надпись',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          _NoteField(
+            text: settings.customNote,
+            onChanged: (value) => controller.update(
+              (current) => current.copyWith(customNote: value),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SegmentedChips<NotePlacement>(
+            values: NotePlacement.values,
+            selected: settings.notePlacement,
+            labelOf: (value) => value.label,
+            onChanged: (value) => controller.update(
+              (current) => current.copyWith(notePlacement: value),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
               'Где показывать заряд и дату',
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
@@ -48,6 +86,31 @@ class SettingsPanel extends StatelessWidget {
               (current) => current.copyWith(infoPlacement: value),
             ),
           ),
+          const SizedBox(height: 14),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Секунды',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          _SecondsPicker(
+            selected: settings.secondsMode,
+            onChanged: (value) => controller.update(
+              (current) => current.copyWith(secondsMode: value),
+            ),
+          ),
+          if (settings.secondsMode == SecondsMode.orbit) ...[
+            const SizedBox(height: 8),
+            SegmentedChips<OrbitStyle>(
+              values: OrbitStyle.values,
+              selected: settings.orbitStyle,
+              labelOf: (value) => value.label,
+              onChanged: (value) => controller.update(
+                (current) => current.copyWith(orbitStyle: value),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           PanelRow(
             label: 'Толщина',
@@ -94,17 +157,6 @@ class SettingsPanel extends StatelessWidget {
               labelOf: (value) => value.label,
               onChanged: (value) => controller.update(
                 (current) => current.copyWith(animation: value),
-              ),
-            ),
-          ),
-          PanelRow(
-            label: 'Секунды',
-            child: SegmentedChips<SecondsMode>(
-              values: SecondsMode.values,
-              selected: settings.secondsMode,
-              labelOf: (value) => value.label,
-              onChanged: (value) => controller.update(
-                (current) => current.copyWith(secondsMode: value),
               ),
             ),
           ),
@@ -254,6 +306,269 @@ class SettingsPanel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Четыре режима секунд. «По краю» — точка, которая обходит экран.
+class _SecondsPicker extends StatelessWidget {
+  const _SecondsPicker({required this.selected, required this.onChanged});
+
+  final SecondsMode selected;
+  final ValueChanged<SecondsMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (final mode in SecondsMode.values) ...[
+          if (mode != SecondsMode.values.first) const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(mode),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: mode == selected ? 0.16 : 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: mode == selected ? const Color(0xFF0A84FF) : Colors.transparent,
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    SizedBox(height: 28, child: _SecondsSketch(mode: mode)),
+                    const SizedBox(height: 4),
+                    Text(
+                      mode.label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: mode == selected ? Colors.white : Colors.white54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SecondsSketch extends StatelessWidget {
+  const _SecondsSketch({required this.mode});
+
+  final SecondsMode mode;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (mode) {
+      SecondsMode.hidden => const Icon(Icons.visibility_off, size: 16, color: Colors.white38),
+      SecondsMode.digits => const Text(
+        '08',
+        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+      SecondsMode.bar => const Align(
+        alignment: Alignment.center,
+        child: _Dash(width: 36, height: 4),
+      ),
+      SecondsMode.orbit => const _OrbitSketch(),
+    };
+  }
+}
+
+/// Рамка экрана и точка на верхнем крае — так выглядит режим «По краю».
+class _OrbitSketch extends StatelessWidget {
+  const _OrbitSketch();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 28,
+      height: 20,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: Colors.white38),
+            ),
+          ),
+          const Positioned(top: -2, child: _Dot(color: Colors.white, size: 6)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Поле своей надписи. Контроллер живёт здесь, чтобы курсор не прыгал
+/// на каждой букве, когда настройки пересобирают панель.
+class _NoteField extends StatefulWidget {
+  const _NoteField({required this.text, required this.onChanged});
+
+  final String text;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_NoteField> createState() => _NoteFieldState();
+}
+
+class _NoteFieldState extends State<_NoteField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focus;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.text);
+    _focus = FocusNode();
+    _focus.addListener(_keepFieldVisible);
+  }
+
+  /// Когда клавиатура сжимает лист, поле прокручивается в видимую часть.
+  void _keepFieldVisible() {
+    if (!_focus.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_focus.hasFocus) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.3,
+        duration: const Duration(milliseconds: 200),
+      );
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _NoteField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.text != _controller.text) {
+      _controller.value = TextEditingValue(
+        text: widget.text,
+        selection: TextSelection.collapsed(offset: widget.text.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.removeListener(_keepFieldVisible);
+    _focus.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focus,
+      onChanged: widget.onChanged,
+      scrollPadding: const EdgeInsets.only(bottom: 80),
+      maxLength: 48,
+      maxLines: 1,
+      textInputAction: TextInputAction.done,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
+      cursorColor: const Color(0xFF0A84FF),
+      decoration: InputDecoration(
+        hintText: 'Напишите что-нибудь',
+        hintStyle: const TextStyle(color: Colors.white38, fontSize: 15),
+        counterText: '',
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.08),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+}
+
+/// Карточки с образцом «17», чтобы шрифт было видно до выбора.
+class _FontPicker extends StatelessWidget {
+  const _FontPicker({required this.selected, required this.onChanged});
+
+  final ClockFont selected;
+  final ValueChanged<ClockFont> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 74,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: ClockFont.values.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final font = ClockFont.values[index];
+          final active = font == selected;
+          return GestureDetector(
+            onTap: () => onChanged(font),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: 88,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: active ? 0.16 : 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: active ? const Color(0xFF0A84FF) : Colors.transparent,
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  font == ClockFont.glass
+                      ? GlassText(
+                          text: '17',
+                          style: withClockFont(
+                            font,
+                            const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w500,
+                              height: 1,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          '17',
+                          style: withClockFont(
+                            font,
+                            const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                  const SizedBox(height: 4),
+                  Text(
+                    font.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: active ? Colors.white : Colors.white54,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

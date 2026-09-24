@@ -18,9 +18,36 @@ enum SecondsMode {
   hidden('Скрыть'),
   digits('Цифры'),
   bar('Полоса'),
-  orbit('По кругу');
+  orbit('По краю');
 
   const SecondsMode(this.label);
+
+  final String label;
+}
+
+/// Шрифт крупных цифр.
+enum ClockFont {
+  system('Системный'),
+  oswald('Oswald'),
+  bebas('Bebas'),
+  orbitron('Orbitron'),
+  comfortaa('Comfortaa'),
+  montserrat('Montserrat'),
+  mono('Mono'),
+  glass('Стекло');
+
+  const ClockFont(this.label);
+
+  final String label;
+}
+
+/// Как точка секунд идёт по краю экрана.
+enum OrbitStyle {
+  dot('Точка'),
+  opacity('Opacity'),
+  jump('Прыжок');
+
+  const OrbitStyle(this.label);
 
   final String label;
 }
@@ -48,16 +75,28 @@ enum DateStyle {
   final String sample;
 }
 
+/// Куда поставить свою надпись: сверху или снизу, всегда по центру.
+enum NotePlacement {
+  top('Сверху'),
+  bottom('Снизу');
+
+  const NotePlacement(this.label);
+
+  final String label;
+}
+
 @immutable
 class ClockSettings {
   const ClockSettings({
     this.use24HourFormat = true,
     this.showLeadingZero = true,
     this.secondsMode = SecondsMode.hidden,
+    this.orbitStyle = OrbitStyle.dot,
     this.digitColor = Colors.white,
     this.accentColor = const Color(0xFFB9B9C2),
     this.digitWeight = 8,
     this.digitScale = 1,
+    this.clockFont = ClockFont.system,
     this.animation = DigitAnimation.sputnik,
     this.nightTheme = true,
     this.showDate = true,
@@ -71,6 +110,8 @@ class ClockSettings {
     this.infoIntensity = 0.7,
     this.infoFollowsDigits = false,
     this.batteryTintByLevel = true,
+    this.customNote = '',
+    this.notePlacement = NotePlacement.top,
   });
 
   /// 24-часовой формат вместо AM/PM.
@@ -79,6 +120,9 @@ class ClockSettings {
   /// Показывать ведущий ноль: `01:27` против `1:27`.
   final bool showLeadingZero;
   final SecondsMode secondsMode;
+
+  /// Ход секунд по краю: точка, затухание или прыжок.
+  final OrbitStyle orbitStyle;
   final Color digitColor;
 
   /// Цвет секунд, двоеточия и мелких элементов.
@@ -89,6 +133,7 @@ class ClockSettings {
 
   /// Множитель размера цифр, 0.5..1.2.
   final double digitScale;
+  final ClockFont clockFont;
   final DigitAnimation animation;
 
   /// Тёмный фон со светлыми цифрами; иначе — наоборот.
@@ -119,6 +164,12 @@ class ClockSettings {
   /// Кольцо заряда зеленеет на зарядке и краснеет, когда батарея садится.
   final bool batteryTintByLevel;
 
+  /// Короткая своя надпись на циферблате. Пустая строка ничего не рисует.
+  final String customNote;
+
+  /// Сверху или снизу экрана, по горизонтали всегда по центру.
+  final NotePlacement notePlacement;
+
   FontWeight get fontWeight => switch (digitWeight) {
     <= 1 => FontWeight.w100,
     2 => FontWeight.w200,
@@ -144,10 +195,12 @@ class ClockSettings {
     bool? use24HourFormat,
     bool? showLeadingZero,
     SecondsMode? secondsMode,
+    OrbitStyle? orbitStyle,
     Color? digitColor,
     Color? accentColor,
     int? digitWeight,
     double? digitScale,
+    ClockFont? clockFont,
     DigitAnimation? animation,
     bool? nightTheme,
     bool? showDate,
@@ -161,15 +214,19 @@ class ClockSettings {
     double? infoIntensity,
     bool? infoFollowsDigits,
     bool? batteryTintByLevel,
+    String? customNote,
+    NotePlacement? notePlacement,
   }) {
     return ClockSettings(
       use24HourFormat: use24HourFormat ?? this.use24HourFormat,
       showLeadingZero: showLeadingZero ?? this.showLeadingZero,
       secondsMode: secondsMode ?? this.secondsMode,
+      orbitStyle: orbitStyle ?? this.orbitStyle,
       digitColor: digitColor ?? this.digitColor,
       accentColor: accentColor ?? this.accentColor,
       digitWeight: digitWeight ?? this.digitWeight,
       digitScale: digitScale ?? this.digitScale,
+      clockFont: clockFont ?? this.clockFont,
       animation: animation ?? this.animation,
       nightTheme: nightTheme ?? this.nightTheme,
       showDate: showDate ?? this.showDate,
@@ -183,6 +240,8 @@ class ClockSettings {
       infoIntensity: infoIntensity ?? this.infoIntensity,
       infoFollowsDigits: infoFollowsDigits ?? this.infoFollowsDigits,
       batteryTintByLevel: batteryTintByLevel ?? this.batteryTintByLevel,
+      customNote: customNote ?? this.customNote,
+      notePlacement: notePlacement ?? this.notePlacement,
     );
   }
 
@@ -192,10 +251,12 @@ class ClockSettings {
         other.use24HourFormat == use24HourFormat &&
         other.showLeadingZero == showLeadingZero &&
         other.secondsMode == secondsMode &&
+        other.orbitStyle == orbitStyle &&
         other.digitColor == digitColor &&
         other.accentColor == accentColor &&
         other.digitWeight == digitWeight &&
         other.digitScale == digitScale &&
+        other.clockFont == clockFont &&
         other.animation == animation &&
         other.nightTheme == nightTheme &&
         other.showDate == showDate &&
@@ -208,18 +269,22 @@ class ClockSettings {
         other.dateStyle == dateStyle &&
         other.infoIntensity == infoIntensity &&
         other.infoFollowsDigits == infoFollowsDigits &&
-        other.batteryTintByLevel == batteryTintByLevel;
+        other.batteryTintByLevel == batteryTintByLevel &&
+        other.customNote == customNote &&
+        other.notePlacement == notePlacement;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     use24HourFormat,
     showLeadingZero,
     secondsMode,
+    orbitStyle,
     digitColor,
     accentColor,
     digitWeight,
     digitScale,
+    clockFont,
     animation,
     nightTheme,
     showDate,
@@ -233,16 +298,20 @@ class ClockSettings {
     infoIntensity,
     infoFollowsDigits,
     batteryTintByLevel,
-  );
+    customNote,
+    notePlacement,
+  ]);
 
   Map<String, Object?> toJson() => {
     'use24HourFormat': use24HourFormat,
     'showLeadingZero': showLeadingZero,
     'secondsMode': secondsMode.name,
+    'orbitStyle': orbitStyle.name,
     'digitColor': digitColor.toARGB32(),
     'accentColor': accentColor.toARGB32(),
     'digitWeight': digitWeight,
     'digitScale': digitScale,
+    'clockFont': clockFont.name,
     'animation': animation.name,
     'nightTheme': nightTheme,
     'showDate': showDate,
@@ -256,6 +325,8 @@ class ClockSettings {
     'infoIntensity': infoIntensity,
     'infoFollowsDigits': infoFollowsDigits,
     'batteryTintByLevel': batteryTintByLevel,
+    'customNote': customNote,
+    'notePlacement': notePlacement.name,
   };
 
   factory ClockSettings.fromJson(Map<String, Object?> json) {
@@ -272,10 +343,18 @@ class ClockSettings {
         (mode) => mode.name == json['secondsMode'],
         orElse: () => fallback.secondsMode,
       ),
+      orbitStyle: OrbitStyle.values.firstWhere(
+        (style) => style.name == json['orbitStyle'],
+        orElse: () => fallback.orbitStyle,
+      ),
       digitColor: Color(pick('digitColor', fallback.digitColor.toARGB32())),
       accentColor: Color(pick('accentColor', fallback.accentColor.toARGB32())),
       digitWeight: pick('digitWeight', fallback.digitWeight),
       digitScale: pick('digitScale', fallback.digitScale),
+      clockFont: ClockFont.values.firstWhere(
+        (font) => font.name == json['clockFont'],
+        orElse: () => fallback.clockFont,
+      ),
       animation: DigitAnimation.values.firstWhere(
         (value) => value.name == json['animation'],
         orElse: () => fallback.animation,
@@ -298,6 +377,11 @@ class ClockSettings {
       infoIntensity: pick('infoIntensity', fallback.infoIntensity),
       infoFollowsDigits: pick('infoFollowsDigits', fallback.infoFollowsDigits),
       batteryTintByLevel: pick('batteryTintByLevel', fallback.batteryTintByLevel),
+      customNote: pick('customNote', fallback.customNote),
+      notePlacement: NotePlacement.values.firstWhere(
+        (value) => value.name == json['notePlacement'],
+        orElse: () => fallback.notePlacement,
+      ),
     );
   }
 }

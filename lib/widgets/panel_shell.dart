@@ -24,9 +24,11 @@ class PanelShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Панель никогда не занимает больше половины экрана, иначе на маленьких
-    // телефонах она перекрывает часы.
-    final limit = maxHeight.clamp(0.0, MediaQuery.sizeOf(context).height * 0.52);
+    // Панель никогда не занимает больше половины видимой области. Клавиатура
+    // вычитается, иначе лист остаётся высоким и вылезает за край.
+    final media = MediaQuery.of(context);
+    final visibleHeight = media.size.height - media.viewInsets.bottom;
+    final limit = maxHeight.clamp(0.0, visibleHeight * 0.52);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),

@@ -6,6 +6,7 @@ import 'package:always_on_display_app/widgets/seconds_orbit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   group('ClockSettings', () {
@@ -16,6 +17,8 @@ void main() {
         digitWeight: 3,
         animation: DigitAnimation.stretch,
         secondsMode: SecondsMode.bar,
+        customNote: 'спокойной ночи',
+        notePlacement: NotePlacement.bottom,
       );
 
       expect(ClockSettings.fromJson(settings.toJson()), settings);
@@ -93,6 +96,30 @@ void main() {
     expect(find.text('7'), findsOneWidget);
     expect(find.text('0'), findsOneWidget);
     expect(find.text('6'), findsOneWidget);
+  });
+
+  testWidgets('стеклянные цифры рисуются без ошибки', (tester) async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 200,
+            child: ClockDisplay(
+              time: DateTime(2026, 9, 23, 17, 6),
+              settings: const ClockSettings(
+                clockFont: ClockFont.glass,
+                animation: DigitAnimation.none,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('1'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('узкие секунды не меняют ширину крупных часов', (tester) async {
