@@ -499,42 +499,41 @@ class _CustomNote extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: settings.clockFont == ClockFont.glass
-                  ? GlassText(
-                      text: settings.customNote.trim(),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: true,
-                      style: withClockFont(
-                        settings.clockFont,
-                        TextStyle(
-                          color: settings.foreground,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                          height: 1.2,
-                        ),
-                      ).copyWith(letterSpacing: 0.6),
-                    )
-                  : Text(
-                      settings.customNote.trim(),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: withClockFont(
-                        settings.clockFont,
-                        TextStyle(
-                          color: settings.foreground,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                          height: 1.2,
-                        ),
-                      ).copyWith(letterSpacing: 0.6),
-                    ),
+              child: _noteLabel(settings),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _noteLabel(ClockSettings settings) {
+    final style = withClockFont(
+      settings.noteFont,
+      TextStyle(
+        color: settings.foreground,
+        fontSize: settings.noteSize,
+        fontWeight: settings.noteFontWeight,
+        height: 1.15,
+      ),
+    );
+    final text = settings.customNote.trim();
+    if (settings.noteFont == ClockFont.glass) {
+      return GlassText(
+        text: text,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        softWrap: true,
+        style: style,
+      );
+    }
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: style,
     );
   }
 }

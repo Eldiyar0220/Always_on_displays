@@ -112,6 +112,9 @@ class ClockSettings {
     this.batteryTintByLevel = true,
     this.customNote = '',
     this.notePlacement = NotePlacement.top,
+    this.noteFont = ClockFont.system,
+    this.noteWeight = 5,
+    this.noteSize = 20,
   });
 
   /// 24-часовой формат вместо AM/PM.
@@ -170,7 +173,20 @@ class ClockSettings {
   /// Сверху или снизу экрана, по горизонтали всегда по центру.
   final NotePlacement notePlacement;
 
-  FontWeight get fontWeight => switch (digitWeight) {
+  /// Шрифт надписи, отдельно от крупных цифр.
+  final ClockFont noteFont;
+
+  /// Толщина надписи, 1..9.
+  final int noteWeight;
+
+  /// Кегль надписи, 14..64.
+  final double noteSize;
+
+  FontWeight get fontWeight => weightFor(digitWeight);
+
+  FontWeight get noteFontWeight => weightFor(noteWeight);
+
+  static FontWeight weightFor(int level) => switch (level) {
     <= 1 => FontWeight.w100,
     2 => FontWeight.w200,
     3 => FontWeight.w300,
@@ -216,6 +232,9 @@ class ClockSettings {
     bool? batteryTintByLevel,
     String? customNote,
     NotePlacement? notePlacement,
+    ClockFont? noteFont,
+    int? noteWeight,
+    double? noteSize,
   }) {
     return ClockSettings(
       use24HourFormat: use24HourFormat ?? this.use24HourFormat,
@@ -242,6 +261,9 @@ class ClockSettings {
       batteryTintByLevel: batteryTintByLevel ?? this.batteryTintByLevel,
       customNote: customNote ?? this.customNote,
       notePlacement: notePlacement ?? this.notePlacement,
+      noteFont: noteFont ?? this.noteFont,
+      noteWeight: noteWeight ?? this.noteWeight,
+      noteSize: noteSize ?? this.noteSize,
     );
   }
 
@@ -271,7 +293,10 @@ class ClockSettings {
         other.infoFollowsDigits == infoFollowsDigits &&
         other.batteryTintByLevel == batteryTintByLevel &&
         other.customNote == customNote &&
-        other.notePlacement == notePlacement;
+        other.notePlacement == notePlacement &&
+        other.noteFont == noteFont &&
+        other.noteWeight == noteWeight &&
+        other.noteSize == noteSize;
   }
 
   @override
@@ -300,6 +325,9 @@ class ClockSettings {
     batteryTintByLevel,
     customNote,
     notePlacement,
+    noteFont,
+    noteWeight,
+    noteSize,
   ]);
 
   Map<String, Object?> toJson() => {
@@ -327,6 +355,9 @@ class ClockSettings {
     'batteryTintByLevel': batteryTintByLevel,
     'customNote': customNote,
     'notePlacement': notePlacement.name,
+    'noteFont': noteFont.name,
+    'noteWeight': noteWeight,
+    'noteSize': noteSize,
   };
 
   factory ClockSettings.fromJson(Map<String, Object?> json) {
@@ -382,6 +413,12 @@ class ClockSettings {
         (value) => value.name == json['notePlacement'],
         orElse: () => fallback.notePlacement,
       ),
+      noteFont: ClockFont.values.firstWhere(
+        (font) => font.name == json['noteFont'],
+        orElse: () => fallback.noteFont,
+      ),
+      noteWeight: pick('noteWeight', fallback.noteWeight),
+      noteSize: pick('noteSize', fallback.noteSize),
     );
   }
 }

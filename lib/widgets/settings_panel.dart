@@ -39,7 +39,7 @@ class SettingsPanel extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(bottom: 6),
             child: Text(
-              'Шрифт',
+              'Шрифт часов',
               style: TextStyle(color: Colors.white70, fontSize: 13),
             ),
           ),
@@ -73,6 +73,46 @@ class SettingsPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Шрифт надписи',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          _FontPicker(
+            selected: settings.noteFont,
+            onChanged: (value) => controller.update(
+              (current) => current.copyWith(noteFont: value),
+            ),
+          ),
+          const SizedBox(height: 8),
+          PanelRow(
+            label: 'Размер',
+            child: Slider(
+              value: settings.noteSize,
+              min: 14,
+              max: 64,
+              label: '${settings.noteSize.round()}',
+              onChanged: (value) => controller.update(
+                (current) => current.copyWith(noteSize: value),
+              ),
+            ),
+          ),
+          PanelRow(
+            label: 'Толщина',
+            child: Slider(
+              value: settings.noteWeight.toDouble(),
+              min: 1,
+              max: 9,
+              divisions: 8,
+              label: '${settings.noteWeight}',
+              onChanged: (value) => controller.update(
+                (current) => current.copyWith(noteWeight: value.round()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           const Padding(
             padding: EdgeInsets.only(bottom: 6),
             child: Text(

@@ -19,6 +19,9 @@ void main() {
         secondsMode: SecondsMode.bar,
         customNote: 'спокойной ночи',
         notePlacement: NotePlacement.bottom,
+        noteFont: ClockFont.comfortaa,
+        noteWeight: 3,
+        noteSize: 32,
       );
 
       expect(ClockSettings.fromJson(settings.toJson()), settings);
